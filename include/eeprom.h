@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdint.h>
 #include <esp_err.h>
+#include <stdint.h>
 
 typedef struct {
     int i2c_bus;
