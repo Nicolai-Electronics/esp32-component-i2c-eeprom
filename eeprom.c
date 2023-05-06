@@ -22,24 +22,26 @@ static const char* TAG = "EEPROM";
 
 esp_err_t eeprom_init(EEPROM* device) { return ESP_OK; }
 
-esp_err_t _eeprom_read(int bus, uint8_t addr, uint16_t address, uint8_t* data, size_t length) {
+esp_err_t _eeprom_read(int bus, uint8_t i2c_address, uint16_t memory_address, uint8_t* data, size_t length, bool address_16bit) {
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     esp_err_t        res = i2c_master_start(cmd);
     if (res != ESP_OK) {
         i2c_cmd_link_delete(cmd);
         return res;
     }
-    res = i2c_master_write_byte(cmd, (addr << 1) | WRITE_BIT, ACK_CHECK_EN);
+    res = i2c_master_write_byte(cmd, (i2c_address << 1) | WRITE_BIT, ACK_CHECK_EN);
     if (res != ESP_OK) {
         i2c_cmd_link_delete(cmd);
         return res;
     }
-    res = i2c_master_write_byte(cmd, address >> 8, ACK_CHECK_EN);
-    if (res != ESP_OK) {
-        i2c_cmd_link_delete(cmd);
-        return res;
+    if (address_16bit) {
+        res = i2c_master_write_byte(cmd, memory_address >> 8, ACK_CHECK_EN);
+        if (res != ESP_OK) {
+            i2c_cmd_link_delete(cmd);
+            return res;
+        }
     }
-    res = i2c_master_write_byte(cmd, address & 0xFF, ACK_CHECK_EN);
+    res = i2c_master_write_byte(cmd, memory_address & 0xFF, ACK_CHECK_EN);
     if (res != ESP_OK) {
         i2c_cmd_link_delete(cmd);
         return res;
@@ -49,7 +51,7 @@ esp_err_t _eeprom_read(int bus, uint8_t addr, uint16_t address, uint8_t* data, s
         i2c_cmd_link_delete(cmd);
         return res;
     }
-    res = i2c_master_write_byte(cmd, (addr << 1) | READ_BIT, ACK_CHECK_EN);
+    res = i2c_master_write_byte(cmd, (i2c_address << 1) | READ_BIT, ACK_CHECK_EN);
     if (res != ESP_OK) {
         i2c_cmd_link_delete(cmd);
         return res;
@@ -77,24 +79,26 @@ esp_err_t _eeprom_read(int bus, uint8_t addr, uint16_t address, uint8_t* data, s
     return res;
 }
 
-esp_err_t _eeprom_write(int bus, uint8_t addr, uint16_t address, uint8_t* data, size_t length) {
+esp_err_t _eeprom_write(int bus, uint8_t i2c_address, uint16_t memory_address, uint8_t* data, size_t length, bool address_16bit) {
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     esp_err_t        res = i2c_master_start(cmd);
     if (res != ESP_OK) {
         i2c_cmd_link_delete(cmd);
         return res;
     }
-    res = i2c_master_write_byte(cmd, (addr << 1) | WRITE_BIT, ACK_CHECK_EN);
+    res = i2c_master_write_byte(cmd, (i2c_address << 1) | WRITE_BIT, ACK_CHECK_EN);
     if (res != ESP_OK) {
         i2c_cmd_link_delete(cmd);
         return res;
     }
-    res = i2c_master_write_byte(cmd, address >> 8, ACK_CHECK_EN);
-    if (res != ESP_OK) {
-        i2c_cmd_link_delete(cmd);
-        return res;
+    if (address_16bit) {
+        res = i2c_master_write_byte(cmd, memory_address >> 8, ACK_CHECK_EN);
+        if (res != ESP_OK) {
+            i2c_cmd_link_delete(cmd);
+            return res;
+        }
     }
-    res = i2c_master_write_byte(cmd, address & 0xFF, ACK_CHECK_EN);
+    res = i2c_master_write_byte(cmd, memory_address & 0xFF, ACK_CHECK_EN);
     if (res != ESP_OK) {
         i2c_cmd_link_delete(cmd);
         return res;
@@ -121,8 +125,8 @@ esp_err_t eeprom_read(EEPROM* device, uint16_t address, uint8_t* data, size_t le
     uint16_t position = 0;
     while (length - position > 0) {
         uint8_t transaction_length = length - position;
-        if (transaction_length > 64) transaction_length = 64;
-        esp_err_t res = _eeprom_read(device->i2c_bus, device->i2c_address, address + position, &data[position], transaction_length);
+        if (transaction_length > device->page_size) transaction_length = device->page_size;
+        esp_err_t res = _eeprom_read(device->i2c_bus, device->i2c_address, address + position, &data[position], transaction_length, device->address_16bit);
         if (res != ESP_OK) {
             ESP_LOGE(TAG, "EEPROM read failed (%d)", res);
             return res;
@@ -133,16 +137,23 @@ esp_err_t eeprom_read(EEPROM* device, uint16_t address, uint8_t* data, size_t le
 }
 
 esp_err_t eeprom_write(EEPROM* device, uint16_t address, uint8_t* data, size_t length) {
+    printf("EEPROM write %u\n", length);
     uint16_t position = 0;
     while (length - position > 0) {
         uint8_t transaction_length = length - position;
-        if (transaction_length > 64) transaction_length = 64;
-        esp_err_t res = _eeprom_write(device->i2c_bus, device->i2c_address, address + position, &data[position], transaction_length);
+        if (transaction_length > device->page_size) transaction_length = device->page_size;
+        printf("Writing at %u: ", address + position);
+        for (int i = position; i < position + transaction_length; i++) {
+            printf("%02x ", data[i]);
+        }
+        printf("\n");
+        esp_err_t res = _eeprom_write(device->i2c_bus, device->i2c_address, address + position, &data[position], transaction_length, device->address_16bit);
         if (res != ESP_OK) {
             ESP_LOGE(TAG, "EEPROM write failed (%d)", res);
             return res;
         }
         position += transaction_length;
+        vTaskDelay(10 / portTICK_RATE_MS); // Give the EEPROM some time to process the write command
     }
     return ESP_OK;
 }

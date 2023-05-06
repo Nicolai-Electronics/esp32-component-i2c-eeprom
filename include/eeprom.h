@@ -2,10 +2,13 @@
 
 #include <esp_err.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct {
     int i2c_bus;
     int i2c_address;
+    bool address_16bit;
+    uint8_t page_size;
 } EEPROM;
 
 esp_err_t eeprom_init(EEPROM* device);
