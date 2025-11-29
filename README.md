@@ -6,11 +6,11 @@ An ESP-IDF component for communicating with I2C EEPROM memory chips.
 
 ### Initializing the EEPROM handle struct
 
-For AT24CS64 (page size of 64 bytes, 8-bit data addressing):
+For AT24CS64 (page size of 32 bytes, 8-bit data addressing):
 
 ```
 eeprom_handle_t handle = {0};
-esp_err_t res = eeprom_init(&handle, i2c_bus, i2c_semaphore, 0x50, 32, false);
+esp_err_t res = eeprom_init(&handle, i2c_bus, i2c_semaphore, 0x50, 16, false);
 
 if (res == ESP_ERR_NOT_FOUND) {
     printf("EEPROM not found on I2C bus\r\n");
