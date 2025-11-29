@@ -74,7 +74,7 @@ esp_err_t _eeprom_read(int bus, uint8_t i2c_address, uint16_t memory_address, ui
         return res;
     }
 
-    res = i2c_master_cmd_begin(bus, cmd, 1000 / portTICK_RATE_MS);
+    res = i2c_master_cmd_begin(bus, cmd, 1000 / portTICK_PERIOD_MS);
     i2c_cmd_link_delete(cmd);
     return res;
 }
@@ -116,7 +116,7 @@ esp_err_t _eeprom_write(int bus, uint8_t i2c_address, uint16_t memory_address, u
         return res;
     }
 
-    res = i2c_master_cmd_begin(bus, cmd, 1000 / portTICK_RATE_MS);
+    res = i2c_master_cmd_begin(bus, cmd, 1000 / portTICK_PERIOD_MS);
     i2c_cmd_link_delete(cmd);
     return res;
 }
@@ -153,7 +153,7 @@ esp_err_t eeprom_write(EEPROM* device, uint16_t address, uint8_t* data, size_t l
             return res;
         }
         position += transaction_length;
-        vTaskDelay(10 / portTICK_RATE_MS); // Give the EEPROM some time to process the write command
+        vTaskDelay(10 / portTICK_PERIOD_MS);  // Give the EEPROM some time to process the write command
     }
     return ESP_OK;
 }
