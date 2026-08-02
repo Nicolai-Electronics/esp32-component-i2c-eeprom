@@ -1,21 +1,26 @@
 name: Push components to Espressif Component Service
 
 on:
-  push:
-    tags:
-      - v*
+  workflow_run:
+    workflows: ["Build and run unit tests"]
+    types:
+      - completed
 
 jobs:
   upload_components:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           submodules: 'recursive'
       - name: Upload components to component service
         uses: espressif/upload-components-ci-action@v1
         with:
           name: "eeprom"
-          version: ${{ github.ref_name }}
+          version: ${{ github.event.workflow_run.head_branch }}
           namespace: "nicolaielectronics"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
