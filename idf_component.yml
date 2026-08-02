@@ -1,0 +1,8 @@
+dependencies:
+  cmake_utilities: "0.*"
+  idf: ">=6.0.2"
+description: Library for reading and writing I2C EEPROM memory
+license: MIT
+issues: https://github.com/Nicolai-Electronics/esp32-component-i2c-eeprom/issues
+repository: git://github.com/Nicolai-Electronics/esp32-component-i2c-eeprom.git
+url: https://github.com/Nicolai-Electronics/esp32-component-i2c-eeprom
